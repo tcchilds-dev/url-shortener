@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { nanoid } from "nanoid";
-import db from "#client.js";
+import db from "#utils/client.js";
 import { createUrlSchema, getUrlSchema } from "#schemas/url.schema.js";
 import { urls } from "#db/schema.js";
 import { eq, sql } from "drizzle-orm";
@@ -28,10 +28,7 @@ export async function shorten(req: Request, res: Response) {
   });
 }
 
-export async function codeRedirect(
-  req: Request<{ shortCode: string }>,
-  res: Response,
-) {
+export async function codeRedirect(req: Request, res: Response) {
   const { params } = getUrlSchema.parse({ params: req.params });
   const { shortCode } = params;
 
@@ -56,10 +53,7 @@ export async function codeRedirect(
   return res.redirect(url);
 }
 
-export async function codeStats(
-  req: Request<{ shortCode: string }>,
-  res: Response,
-) {
+export async function codeStats(req: Request, res: Response) {
   const { params } = getUrlSchema.parse({ params: req.params });
   const { shortCode } = params;
 

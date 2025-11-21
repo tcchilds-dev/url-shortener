@@ -4,11 +4,12 @@ import {
   codeStats,
   shorten,
 } from "#controllers/urlController.js";
+import { createUrlLimiter, getLimiter } from "#middleware/rateLimiter.js";
 
 const router = Router();
 
-router.post("/shorten", shorten);
-router.get("/:shortCode", codeRedirect);
-router.get("/:shortCode/stats", codeStats);
+router.post("/shorten", createUrlLimiter, shorten);
+router.get("/:shortCode", getLimiter, codeRedirect);
+router.get("/:shortCode/stats", getLimiter, codeStats);
 
 export default router;
