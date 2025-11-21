@@ -7,7 +7,6 @@ import { pinoHttp } from "pino-http";
 import logger from "#utils/logger.js";
 import helmet from "helmet";
 
-const port = process.env.PORT ?? "3000";
 const app = express();
 
 // Tell Express I'm behind a proxy (Docker)
@@ -44,7 +43,4 @@ app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "URL-shortener API is running" });
 });
 
-// Listen
-app.listen(port, () => {
-  console.log(`Listening on port ${port}`);
-});
+export default app;
