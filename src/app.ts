@@ -26,7 +26,7 @@ app.use(
         connectSrc: ["'self'"],
       },
     },
-  })
+  }),
 );
 
 // Body Parser
@@ -43,7 +43,7 @@ app.use(
         // userId: req.user?.id
       }),
     },
-  })
+  }),
 );
 
 // Docs
@@ -60,7 +60,7 @@ app.use(
   apiReference({
     theme: "purple",
     content: openApiDocs,
-  })
+  }),
 );
 
 // Routes
