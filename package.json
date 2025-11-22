@@ -29,6 +29,8 @@
   "type": "module",
   "dependencies": {
     "@acpr/rate-limit-postgresql": "^1.4.1",
+    "@asteasolutions/zod-to-openapi": "^8.1.0",
+    "@scalar/express-api-reference": "^0.8.25",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "express": "^5.1.0",

@@ -6,6 +6,8 @@ import { errorHandler } from "#middleware/errorHandler.js";
 import { pinoHttp } from "pino-http";
 import logger from "#utils/logger.js";
 import helmet from "helmet";
+import { apiReference } from "@scalar/express-api-reference";
+import { generateOpenApiDocs } from "#docs/openApiGenerator.js";
 
 const app = express();
 
@@ -13,7 +15,19 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Security
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"],
+        styleSrc: ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https://cdn.jsdelivr.net"],
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'"],
+      },
+    },
+  })
+);
 
 // Body Parser
 app.use(express.json());
@@ -29,7 +43,24 @@ app.use(
         // userId: req.user?.id
       }),
     },
-  }),
+  })
+);
+
+// Docs
+const openApiDocs = generateOpenApiDocs();
+
+// raw JSON
+app.get("/openapi.json", (req: Request, res: Response) => {
+  res.json(openApiDocs);
+});
+
+// Scalar UI
+app.use(
+  "/docs",
+  apiReference({
+    theme: "purple",
+    content: openApiDocs,
+  })
 );
 
 // Routes
