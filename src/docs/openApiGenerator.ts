@@ -18,8 +18,8 @@ registry.register("GetUrlParams", getUrlSchema);
 registry.registerPath({
   method: "post",
   path: "/api/shorten",
-  description: "Shorten a URL",
-  summary: "Create a shortened URL",
+  description: "Recieve a long URL, create a shortened URL",
+  summary: "Shorten a URL",
   tags: ["URL"],
   request: {
     body: {
@@ -58,7 +58,8 @@ registry.registerPath({
 registry.registerPath({
   method: "get",
   path: "/api/{shortCode}",
-  description: "Redirect to the original URL",
+  description:
+    "Look up the entry with the given short code, and redirect to the original URL",
   summary: "Redirect using short code",
   tags: ["URL"],
   request: {
@@ -95,7 +96,7 @@ registry.registerPath({
             type: "object",
             properties: {
               clicks: { type: "number", example: 42 },
-              lastClick: { type: "string", format: "datetime" },
+              lastClick: { type: "string", format: "date-time" },
             },
           },
         },
@@ -121,6 +122,6 @@ export function generateOpenApiDocs() {
       description:
         "A simple URL shortener API built with Express, Drizzle, and Zod.",
     },
-    servers: [{ url: "/api" }],
+    servers: [{ url: "/" }],
   });
 }

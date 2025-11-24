@@ -5,7 +5,6 @@ const logger = pino({
 
   redact: {
     paths: ["password", "token", "authorization", "cookie"],
-    censor: "[REDACTED]",
   },
 
   ...(process.env.NODE_ENV !== "production" && {

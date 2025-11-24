@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { shorten, codeRedirect, codeStats } from "./urlController.js";
 import { type Request, type Response } from "express";
 import { AppError } from "#utils/AppError.js";
+import { ZodError } from "zod";
 
 // Mock Database (we need method chaining)
 const dbMock = vi.hoisted(() => ({
@@ -71,7 +72,9 @@ describe("URL Controller", () => {
     it("should throw Zod error if URL is invalid", async () => {
       req.body = { url: "not-a-url" };
 
-      await expect(shorten(req as Request, res as Response)).rejects.toThrow();
+      await expect(shorten(req as Request, res as Response)).rejects.toThrow(
+        ZodError,
+      );
     });
   });
 
@@ -101,13 +104,12 @@ describe("URL Controller", () => {
       // Mock DB to return empty array (not found)
       dbMock.where.mockResolvedValue([]);
 
-      // Act & Assert
-      await expect(
-        codeRedirect(req as Request, res as Response),
-      ).rejects.toThrow(AppError);
-      await expect(
-        codeRedirect(req as Request, res as Response),
-      ).rejects.toThrow("URL not found");
+      // Act
+      const promise = codeRedirect(req as Request, res as Response);
+
+      // Assert
+      await expect(promise).rejects.toThrow(AppError);
+      await expect(promise).rejects.toThrow("URL not found");
     });
   });
 
