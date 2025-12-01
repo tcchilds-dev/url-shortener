@@ -6,26 +6,10 @@ extendZodWithOpenApi(z);
 export const createUrlSchema = z
   .object({
     body: z.object({
-      url: z
-        .string()
-        .refine(
-          (val) => {
-            try {
-              new URL(val);
-              return true;
-            } catch (err) {
-              console.error(err);
-              return false;
-            }
-          },
-          {
-            message: "Invalid URL format",
-          },
-        )
-        .openapi({
-          example: "https://www.google.com",
-          description: "The full URL you want to shorten",
-        }),
+      url: z.url({ message: "Invalid URL format" }).openapi({
+        example: "https://www.google.com",
+        description: "The full URL you want to shorten",
+      }),
     }),
   })
   .openapi("CreateUrlRequest");

@@ -2,7 +2,8 @@ import {
   OpenApiGeneratorV3,
   OpenAPIRegistry,
 } from "@asteasolutions/zod-to-openapi";
-import { createUrlSchema, getUrlSchema } from "../schemas/url.schema.js";
+import { createUrlSchema, getUrlSchema } from "../zod-schemas/url.schema.js";
+import type { OpenAPIObject } from "openapi3-ts/oas30";
 
 export const registry = new OpenAPIRegistry();
 
@@ -95,7 +96,7 @@ registry.registerPath({
           schema: {
             type: "object",
             properties: {
-              clicks: { type: "number", example: 42 },
+              clicks: { type: "integer", example: 42 },
               lastClick: { type: "string", format: "date-time" },
             },
           },
@@ -111,7 +112,7 @@ registry.registerPath({
   },
 });
 
-export function generateOpenApiDocs() {
+export function generateOpenApiDocs(): OpenAPIObject {
   const generator = new OpenApiGeneratorV3(registry.definitions);
 
   return generator.generateDocument({

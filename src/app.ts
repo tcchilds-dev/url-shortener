@@ -1,7 +1,8 @@
 import express from "express";
-import { type Request, type Response } from "express";
+import type { Request, Response, Application } from "express";
 import "dotenv/config";
 import urlRoutes from "#routes/urlRoutes.js";
+import userRoutes from "#routes/userRoutes.js";
 import { errorHandler } from "#middleware/errorHandler.js";
 import { pinoHttp } from "pino-http";
 import logger from "#utils/logger.js";
@@ -9,10 +10,10 @@ import helmet from "helmet";
 import { apiReference } from "@scalar/express-api-reference";
 import { generateOpenApiDocs } from "#docs/openApiGenerator.js";
 
-const app = express();
+const app: Application = express();
 
 // Tell Express I'm behind a proxy (Docker)
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 // Security
 app.use(
@@ -26,7 +27,7 @@ app.use(
         connectSrc: ["'self'"],
       },
     },
-  }),
+  })
 );
 
 // Body Parser
@@ -43,7 +44,7 @@ app.use(
         // userId: req.user?.id
       }),
     },
-  }),
+  })
 );
 
 // Docs
@@ -60,11 +61,12 @@ app.use(
   apiReference({
     theme: "purple",
     content: openApiDocs,
-  }),
+  })
 );
 
 // Routes
-app.use("/api", urlRoutes);
+app.use("/", urlRoutes);
+app.use("/", userRoutes);
 
 // Error Handling
 app.use(errorHandler);

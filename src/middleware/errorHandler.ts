@@ -6,7 +6,7 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction
 ) => {
   // Default to 500 Internal Server Error
   let statusCode = 500;
