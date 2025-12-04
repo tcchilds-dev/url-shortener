@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  # 1. Express API
+  api:
+    build: .
+    container_name: url_shortener_api
+    ports:
+      - "3000:3000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgres://user:password@postgres:5432/shortener_db
+      - PORT=3000
+    depends_on:
+      - redis
+      - postgres
+    command: pnpm tsx src/index.ts
+
+  # 2. BullMQ Worker
+  worker:
+    build: .
+    container_name: url_shortener_worker
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgres://user:password@postgres:5432/shortener_db
+    depends_on:
+      - redis
+      - postgres
+    command: pnpm tsx src/utils/analyticsWorker.ts
+
+  # 3. Shared Redis Cache/Queue
+  redis:
+    image: redis:7-alpine
+    container_name: url_shortener_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # 4. Main Development Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: url_shortener_db_dev
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: shortener_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # 5. Test Database
+  postgres_test:
+    image: postgres:15-alpine
+    container_name: url_shortener_db_test
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_test_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  pg_data:
+  pg_test_data:

@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, beforeAll } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import app from "../../app.js";
 import db from "#utils/client.js";
 import { analytics, urls, users } from "#db/schema.js";
-import { eq } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import bcrypt from "bcrypt";
+import { connectRedis } from "#utils/redisClient.js";
+import redis from "#utils/redisClient.js";
 
 describe("Integration: URL API", () => {
   const TEST_USER_EMAIL = "integration_test@example.com";
@@ -14,6 +15,10 @@ describe("Integration: URL API", () => {
   const TEST_SHORT_CODE = "a23b56c";
 
   let authToken: string;
+
+  beforeAll(async () => {
+    await connectRedis();
+  });
 
   beforeEach(async () => {
     await db.delete(urls);
@@ -37,6 +42,10 @@ describe("Integration: URL API", () => {
     });
 
     authToken = loginRes.body.token;
+  });
+
+  afterAll(async () => {
+    await redis.quit();
   });
 
   // --- register ---
@@ -218,14 +227,6 @@ describe("Integration: URL API", () => {
       // assert redirect
       expect(response.status).toBe(302);
       expect(response.header.location).toBe("https://www.google.com");
-
-      // assert db side effects
-      const result = await db
-        .select()
-        .from(urls)
-        .innerJoin(analytics, eq(urls.id, analytics.urlId));
-      expect(result).toHaveLength(1);
-      expect(result[0]!.urls.clickCount).toBe(1);
     });
 
     it("should return 400 for an invalid code (Zod)", async () => {

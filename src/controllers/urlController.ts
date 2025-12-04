@@ -2,24 +2,12 @@ import { type Request, type Response } from "express";
 import { nanoid } from "nanoid";
 import db from "#utils/client.js";
 import { createUrlSchema, getUrlSchema } from "#zod-schemas/url.schema.js";
-import { getUrlAnalyticsSchema } from "#zod-schemas/analytics.schema.js";
 import { urls, analytics } from "#db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { AppError } from "#utils/AppError.js";
 import type { AuthRequest } from "#middleware/authentication.js";
-import { UAParser } from "ua-parser-js";
-import geoip from "geoip-lite";
-
-function lookupLocationFromIp(ip: string | undefined) {
-  if (!ip) return null;
-  const geo = geoip.lookup(ip);
-  if (!geo) return null;
-
-  return {
-    country: geo.country ?? null,
-    city: geo.city ?? null,
-  };
-}
+import { analyticsQueue } from "#utils/queueClient.js";
+import redis from "#utils/redisClient.js";
 
 export async function shorten(req: AuthRequest, res: Response) {
   const { body } = createUrlSchema.parse({ body: req.body });
@@ -48,6 +36,21 @@ export async function codeRedirect(req: Request, res: Response) {
   const { params } = getUrlSchema.parse({ params: req.params });
   const { shortCode } = params;
 
+  const analyticsData = {
+    shortCode,
+    ip: req.ip,
+    userAgent: req.get("user-agent") ?? undefined,
+    referer: req.get("referer") ?? null,
+  };
+
+  const cachedUrl = await redis.get(`url:${shortCode}`);
+
+  if (cachedUrl) {
+    console.log("Cache Hit");
+    analyticsQueue.add("track-click", analyticsData);
+    return res.redirect(cachedUrl);
+  }
+
   const [urlFound] = await db
     .select({ id: urls.id, url: urls.originalUrl })
     .from(urls)
@@ -57,36 +60,9 @@ export async function codeRedirect(req: Request, res: Response) {
     throw new AppError("URL not found", 404);
   }
 
-  const ip = req.ip;
-  const userAgent = req.get("user-agent") ?? undefined;
-  const referer = req.get("referer") ?? null;
+  await redis.set(`url:${shortCode}`, urlFound.url, { EX: 3600 });
 
-  const uaResult = UAParser(userAgent);
-  const deviceType = uaResult.device.type ?? "desktop";
-
-  const location = lookupLocationFromIp(ip);
-  const country = location?.country ?? null;
-  const city = location?.city ?? null;
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(urls)
-      .set({
-        clickCount: sql<number>`${urls.clickCount} + 1`,
-        lastClickedAt: new Date(),
-      })
-      .where(eq(urls.shortCode, shortCode));
-
-    await tx.insert(analytics).values({
-      urlId: urlFound.id,
-      ip: ip,
-      userAgent: userAgent,
-      referer: referer,
-      country: country,
-      city: city,
-      device: deviceType,
-    });
-  });
+  analyticsQueue.add("track-click", analyticsData);
 
   return res.redirect(urlFound.url);
 }
