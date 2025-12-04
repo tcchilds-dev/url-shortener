@@ -6,9 +6,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgres://user:password@postgres:5432/shortener_db
-      - PORT=3000
+      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: ${PORT}
     depends_on:
       - redis
       - postgres
@@ -19,8 +19,8 @@ services:
     build: .
     container_name: url_shortener_worker
     environment:
-      - REDIS_URL=redis://redis:6379
-      - DATABASE_URL=postgres://user:password@postgres:5432/shortener_db
+      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       - redis
       - postgres
@@ -40,9 +40,9 @@ services:
     image: postgres:17-alpine
     container_name: url_shortener_db_dev
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: shortener_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -53,9 +53,9 @@ services:
     image: postgres:17-alpine
     container_name: url_shortener_db_test
     environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_db
+      POSTGRES_USER: ${TEST_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TEST_POSTGRES_DB}
     ports:
       - "5433:5432"
     volumes:
