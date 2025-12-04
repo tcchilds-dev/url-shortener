@@ -1,5 +1,6 @@
+minimumReleaseAge: 20160
+
 onlyBuiltDependencies:
   - bcrypt
   - esbuild
-
-minimumReleaseAge: 20160
+  - msgpackr-extract
