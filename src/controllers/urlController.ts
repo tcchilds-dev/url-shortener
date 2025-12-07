@@ -9,9 +9,9 @@ import type { AuthRequest } from "#middleware/authentication.js";
 import { analyticsQueue } from "#utils/queueClient.js";
 import redis from "#utils/redisClient.js";
 
+// --- Shorten ---
 export async function shorten(req: AuthRequest, res: Response) {
-  const { body } = createUrlSchema.parse({ body: req.body });
-  const { url } = body;
+  const { url } = createUrlSchema.parse(req.body);
   const userId = req.user!.id;
   const shortId = nanoid(7);
 
@@ -32,9 +32,9 @@ export async function shorten(req: AuthRequest, res: Response) {
   });
 }
 
+// --- Redirect ---
 export async function codeRedirect(req: Request, res: Response) {
-  const { params } = getUrlSchema.parse({ params: req.params });
-  const { shortCode } = params;
+  const { shortCode } = getUrlSchema.parse(req.params);
 
   const analyticsData = {
     shortCode,
@@ -47,6 +47,7 @@ export async function codeRedirect(req: Request, res: Response) {
 
   if (cachedUrl) {
     console.log("Cache Hit");
+    await redis.expire(shortCode, 604800);
     analyticsQueue.add("track-click", analyticsData);
     return res.redirect(cachedUrl);
   }
@@ -60,13 +61,14 @@ export async function codeRedirect(req: Request, res: Response) {
     throw new AppError("URL not found", 404);
   }
 
-  await redis.set(`url:${shortCode}`, urlFound.url, { EX: 3600 });
+  await redis.set(`url:${shortCode}`, urlFound.url, { EX: 604800 });
 
   analyticsQueue.add("track-click", analyticsData);
 
   return res.redirect(urlFound.url);
 }
 
+// --- User URL Analytics ---
 export async function getUserUrlAnalytics(req: AuthRequest, res: Response) {
   const userId = req.user!.id;
 
@@ -79,12 +81,9 @@ export async function getUserUrlAnalytics(req: AuthRequest, res: Response) {
   return res.status(200).json(stats);
 }
 
+// --- Specific URL Analyics ---
 export async function getSpecificUrlAnalytics(req: AuthRequest, res: Response) {
-  const {
-    params: { shortCode },
-  } = getUrlSchema.parse({
-    params: req.params,
-  });
+  const { shortCode } = getUrlSchema.parse(req.params);
   const userId = req.user!.id;
 
   const [stats] = await db

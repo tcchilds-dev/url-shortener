@@ -7,9 +7,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { userDataSchema } from "#zod-schemas/user.schema.js";
 
+// --- Register ---
 export async function register(req: Request, res: Response) {
-  const { body } = userDataSchema.parse({ body: req.body });
-  const { email, password } = body;
+  const { email, password } = userDataSchema.parse(req.body);
 
   const checkExisting = await db
     .select({ id: users.id })
@@ -41,9 +41,9 @@ export async function register(req: Request, res: Response) {
   });
 }
 
+// --- Log In ---
 export async function logIn(req: Request, res: Response) {
-  const { body } = userDataSchema.parse({ body: req.body });
-  const { email, password } = body;
+  const { email, password } = userDataSchema.parse(req.body);
 
   const [user] = await db.select().from(users).where(eq(users.email, email));
 

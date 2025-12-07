@@ -4,15 +4,13 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 extendZodWithOpenApi(z);
 
 export const userDataSchema = z.object({
-  body: z.object({
-    email: z.email({ message: "Invalid email" }).openapi({
-      example: "user@example.com",
-      description: "The user's email address",
-    }),
-    password: z.string().min(8).openapi({
-      example: "supersecretpassword",
-      description: "The user's password",
-    }),
+  email: z.email({ message: "Invalid email" }).openapi({
+    example: "user@example.com",
+    description: "The user's email address",
+  }),
+  password: z.string().min(8).openapi({
+    example: "supersecretpassword",
+    description: "The user's password",
   }),
 });
 

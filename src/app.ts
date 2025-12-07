@@ -13,7 +13,7 @@ import { generateOpenApiDocs } from "#docs/openApiGenerator.js";
 const app: Application = express();
 
 // Tell Express I'm behind a proxy (Docker)
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // Security
 app.use(
