@@ -4,16 +4,12 @@ A simple API service for creating short links with analytics from long URLs.
 
 I'm currently learning, so any feedback is welcome!
 
----
-
 ## Features
 
 - **Authenticated User Accounts**: Users can register, create their own short links, and have exclusive access to the analytics of their short links.
 - **Click Analytics**: Tracks the number of clicks, last clicked at time for links. Each click records referrer, geographical and device information.
 - **Fast Redirects**: Uses [Redis](https://redis.io/) to cache URLs for ultra-fast redirection. [BullMQ](https://bullmq.io/) is used to offload analytics processing to a background worker, ensuring the user's redirect is never blocked by database writes.
 - **Rate Limiting**: Implements request limits to prevent abuse.
-
----
 
 ## Technologies Used
 
@@ -31,8 +27,6 @@ I'm currently learning, so any feedback is welcome!
   - **Caching Layer**: [Redis](https://redis.io/)
 - **Containerization**: [Docker](https://www.docker.com/)
 - **Documentation**: OpenAPI specification with [Scalar UI](https://scalar.com/)
-
----
 
 ## Getting Started
 
@@ -101,8 +95,6 @@ docker compose -f docker-compose-dev.yml up -d
 The API should now be running at `http://localhost:[Your API Port]`.
 For the interactive API reference go to `http://localhost:[Your API Port]/docs`.
 
----
-
 ## API Endpoints
 
 If you have the project running locally, you can find the Scalar UI Interactive API Reference at `http://localhost:[Your API Port]/docs`.
@@ -129,8 +121,6 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 
 **Note**: Authenticated endpoints require a **Bearer Token** (JWT) in the `Authorization` header.
 
----
-
 #### URL Shortening & Redirect
 
 | **Method** | **Path**       | **Summary**               | **Description**                                                        | **Security** |
@@ -150,8 +140,6 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 - `302` - Redirects to the original URL
 - `400` - Validation Error
 - `404` - URL not found
-
----
 
 #### Analytics
 
@@ -173,8 +161,6 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 - `400` - Validation Error
 - `401` - That URL does not belong to this user
 - `404` - URL not found
-
----
 
 ## Authentication
 
@@ -220,8 +206,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 If the token is missing, expired, or invalid when accessing a protected route, the API will respond with a `401` status code. The client should the prompt the user to log in again to obtain a new token.
 
----
-
 ## License
 
 MIT License
@@ -245,8 +229,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
 
 ## Contact
 
