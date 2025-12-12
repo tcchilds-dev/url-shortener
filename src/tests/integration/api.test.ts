@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import app from "../../app.js";
-import db from "#utils/client.js";
+import db from "#utils/drizzleClient.js";
 import { analytics, urls, users } from "#db/schema.js";
 import { uuidv7 } from "uuidv7";
 import bcrypt from "bcrypt";
@@ -36,7 +36,7 @@ describe("Integration: URL API", () => {
       })
       .onConflictDoNothing();
 
-    const loginRes = await request(app).post("/login").send({
+    const loginRes = await request(app).post("/api/v1/users/login").send({
       email: TEST_USER_EMAIL,
       password: TEST_USER_PASSWORD,
     });
@@ -49,11 +49,11 @@ describe("Integration: URL API", () => {
   });
 
   // --- register ---
-  describe("POST /register", () => {
+  describe("POST /api/v1/users/register", () => {
     it("should register a new user", async () => {
       // send request
       const response = await request(app)
-        .post("/register")
+        .post("/api/v1/users/register")
         .send({ email: "newGuy@example.com", password: "password123" });
 
       // assert response
@@ -76,7 +76,7 @@ describe("Integration: URL API", () => {
       });
 
       // send request
-      const response = await request(app).post("/register").send({
+      const response = await request(app).post("/api/v1/users/register").send({
         email: "existing@example.com",
         password: "password123",
       });
@@ -87,7 +87,7 @@ describe("Integration: URL API", () => {
 
     it("should return ZodError if email is invalid", async () => {
       // send request
-      const response = await request(app).post("/register").send({
+      const response = await request(app).post("/api/v1/users/register").send({
         email: "not-a-valid.email",
         password: "password123",
       });
@@ -98,7 +98,7 @@ describe("Integration: URL API", () => {
 
     it("should return ZodError if password is less than 8 chars", async () => {
       // send request
-      const response = await request(app).post("/register").send({
+      const response = await request(app).post("/api/v1/users/register").send({
         email: "valid@example.com",
         password: "2short",
       });
@@ -108,7 +108,7 @@ describe("Integration: URL API", () => {
   });
 
   // --- log in ---
-  describe("POST /login", () => {
+  describe("POST /api/v1/users/login", () => {
     it("should log an existing user in", async () => {
       // seed the db
       const hashedPass = await bcrypt.hash("password123", 10);
@@ -120,7 +120,7 @@ describe("Integration: URL API", () => {
 
       // send request
       const response = await request(app)
-        .post("/login")
+        .post("/api/v1/users/login")
         .send({ email: "existing@example.com", password: "password123" });
 
       // assert response
@@ -128,18 +128,18 @@ describe("Integration: URL API", () => {
       expect(response.body.token).toBeDefined();
     });
 
-    it("should return 404 if the user does not exist", async () => {
+    it("should return 401 if the user does not exist", async () => {
       // send request
-      const response = await request(app).post("/login").send({
+      const response = await request(app).post("/api/v1/users/login").send({
         email: "ghost@example.com",
         password: "password123",
       });
 
       // assert response
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(401);
     });
 
-    it("should return 400 if the password is invalid", async () => {
+    it("should return 401 if the password is invalid", async () => {
       // seed the db
       const hashedPass = await bcrypt.hash("password123", 10);
 
@@ -151,22 +151,22 @@ describe("Integration: URL API", () => {
       await db.insert(users).values(data);
 
       // send request
-      const response = await request(app).post("/login").send({
+      const response = await request(app).post("/api/v1/users/login").send({
         email: "existing@example.com",
         password: "password12",
       });
 
       // assert responses
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(401);
     });
   });
 
   // --- shorten ---
-  describe("POST /shorten", () => {
+  describe("POST /api/v1/urls", () => {
     it("should take long URL, create short, store them in DB, return short", async () => {
       // send request
       const response = await request(app)
-        .post("/shorten")
+        .post("/api/v1/urls")
         .set("Authorization", `Bearer ${authToken}`)
         .send({ url: "https://www.github.com" });
 
@@ -183,7 +183,7 @@ describe("Integration: URL API", () => {
 
     it("should return 400 for invalid URL (Zod Middleware check)", async () => {
       const response = await request(app)
-        .post("/shorten")
+        .post("/api/v1/urls")
         .set("Authorization", `Bearer ${authToken}`)
         .send({ url: "not-a-url" });
 
@@ -193,7 +193,7 @@ describe("Integration: URL API", () => {
 
     it("should reject request without token", async () => {
       const response = await request(app)
-        .post("/shorten")
+        .post("/api/v1/urls")
         .send({ url: "https://www.github.com" });
 
       expect(response.status).toBe(400);
@@ -201,7 +201,7 @@ describe("Integration: URL API", () => {
 
     it("should reject request with invalid token", async () => {
       const response = await request(app)
-        .post("/shorten")
+        .post("/api/v1/urls")
         .set("Authorization", "Bearer invalid-token")
         .send({ url: "https://www.github.com" });
 
@@ -229,6 +229,34 @@ describe("Integration: URL API", () => {
       expect(response.header.location).toBe("https://www.google.com");
     });
 
+    it("should redirect from cache on second request", async () => {
+      // seed the db
+      const [inserted] = await db
+        .insert(urls)
+        .values({
+          originalUrl: "https://www.google.com",
+          shortCode: "1234567",
+        })
+        .returning();
+      const shortCode = inserted!.shortCode;
+
+      // first request - db hit
+      await request(app).get(`/${shortCode}`);
+
+      // simulate cache expiration
+      await redis.del(`urls:${shortCode}`);
+
+      // second request - db miss - should insert into redis
+      await request(app).get(`/${shortCode}`);
+
+      // third request - cache hit
+      const response = await request(app).get(`/${shortCode}`);
+
+      // assert redirect
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe("https://www.google.com");
+    });
+
     it("should return 400 for an invalid code (Zod)", async () => {
       // make bad request
       const response = await request(app).get("/wrongformat");
@@ -248,7 +276,7 @@ describe("Integration: URL API", () => {
   });
 
   // --- get specific url stats ---
-  describe("GET /:shortCode/stats", () => {
+  describe("GET /api/v1/users/urls/:shortCode/stats", () => {
     it("should return stats for specified short url", async () => {
       const UNIQUE_URL_ID = uuidv7();
 
@@ -265,7 +293,6 @@ describe("Integration: URL API", () => {
 
       await db.insert(analytics).values({
         urlId: UNIQUE_URL_ID,
-        ip: "192.168.1.1",
         userAgent: "Mozzila/5.0 (Test; Integration) Drizzle",
         referer: "https://www.old-site.com",
         country: "GB",
@@ -276,7 +303,7 @@ describe("Integration: URL API", () => {
 
       // send request
       const response = await request(app)
-        .get(`/${TEST_SHORT_CODE}/stats`)
+        .get(`/api/v1/users/urls/${TEST_SHORT_CODE}/stats`)
         .set("Authorization", `Bearer ${authToken}`);
 
       // assert response
@@ -284,7 +311,7 @@ describe("Integration: URL API", () => {
     });
   });
 
-  describe("GET /home", () => {
+  describe("GET /api/v1/users/urls", () => {
     it("should return all urls and analytics owned by the user", async () => {
       const UNIQUE_URL_ID = uuidv7();
 
@@ -301,7 +328,6 @@ describe("Integration: URL API", () => {
 
       await db.insert(analytics).values({
         urlId: UNIQUE_URL_ID,
-        ip: "192.168.1.1",
         userAgent: "Mozzila/5.0 (Test; Integration) Drizzle",
         referer: "https://www.old-site.com",
         country: "GB",
@@ -312,7 +338,7 @@ describe("Integration: URL API", () => {
 
       // send request
       const response = await request(app)
-        .get("/home")
+        .get("/api/v1/users/urls")
         .set("Authorization", `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);

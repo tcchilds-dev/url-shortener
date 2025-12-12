@@ -12,17 +12,17 @@ const router: Router = Router();
 
 // --- Specific URL Analytics ---
 router.get(
-  "/:shortCode/stats",
+  "/api/v1/users/urls/:shortCode/stats",
   requireAuth,
   getLimiter,
   getSpecificUrlAnalytics
 );
 
-// --- User's URLs and Analytics ---
-router.get("/home", requireAuth, getLimiter, getUserUrlAnalytics);
+// --- User's URLs ---
+router.get("/api/v1/users/urls", requireAuth, getLimiter, getUserUrlAnalytics);
 
 // --- Shorten URL ---
-router.post("/shorten", requireAuth, createUrlLimiter, shorten);
+router.post("/api/v1/urls", requireAuth, createUrlLimiter, shorten);
 
 // --- Redirect ---
 router.get("/:shortCode", getLimiter, codeRedirect);

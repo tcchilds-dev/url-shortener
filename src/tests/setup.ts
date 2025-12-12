@@ -1,6 +1,6 @@
 import { beforeAll } from "vitest";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import db from "../utils/client.js";
+import db from "../utils/drizzleClient.js";
 
 beforeAll(async () => {
   console.log("Running migrations on Test DB...");

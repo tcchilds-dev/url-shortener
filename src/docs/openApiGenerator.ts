@@ -21,7 +21,7 @@ registry.register("UserData", userDataSchema);
 
 registry.registerPath({
   method: "post",
-  path: "/register",
+  path: "api/v1/users/register",
   summary: "Register a new user",
   description: "Creates a new user account with email and password",
   tags: ["Authentication"],
@@ -60,7 +60,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "post",
-  path: "/login",
+  path: "api/v1/users/login",
   summary: "Log in to an existing account",
   description:
     "Authenticates a user with email and password, returning a JWT token",
@@ -91,18 +91,15 @@ registry.registerPath({
         },
       },
     },
-    400: {
-      description: "Bad request - Invalid password",
-    },
-    404: {
-      description: "User not found - No account exists with that email",
+    401: {
+      description: "Invalid username or password",
     },
   },
 });
 
 registry.registerPath({
   method: "post",
-  path: "/shorten",
+  path: "/api/v1/urls",
   summary: "Shorten a URL",
   description:
     "Recieve a long URL, create a shortened URL for an authorized user",
@@ -161,8 +158,8 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/home",
-  summary: "Get user URL analytics",
+  path: "/api/v1/users/urls",
+  summary: "Get user URLs",
   description:
     "Retrieves analytics data for all URLs belonging to the authenticated user",
   tags: ["Analytics"],
@@ -174,26 +171,11 @@ registry.registerPath({
         "application/json": {
           schema: z.array(
             z.object({
-              urls: z.object({
-                id: z.uuidv7(),
-                shortCode: z.string().length(7),
-                originalUrl: z.url(),
-                userId: z.uuidv7(),
-                clickCount: z.number(),
-                lastClickedAt: z.iso.datetime(),
-                createdAt: z.iso.datetime(),
-              }),
-              analytics: z.object({
-                id: z.uuidv7(),
-                urlId: z.uuidv7(),
-                ip: z.string(),
-                userAgent: z.string(),
-                referer: z.string(),
-                country: z.string(),
-                city: z.string(),
-                device: z.string(),
-                createdAt: z.iso.datetime(),
-              }),
+              shortCode: z.string().length(7),
+              originalUrl: z.url(),
+              clickCount: z.number(),
+              lastClickedAt: z.iso.datetime(),
+              createdAt: z.iso.datetime(),
             })
           ),
         },
@@ -207,7 +189,7 @@ registry.registerPath({
 
 registry.registerPath({
   method: "get",
-  path: "/{shortCode}/stats",
+  path: "/api/v1/users/urls/{shortCode}/stats",
   summary: "Get specific URL analytics",
   description: "Retrieves analytics data for a specific URL by its short code",
   tags: ["Analytics"],
@@ -251,7 +233,7 @@ registry.registerPath({
       description: "Validation Error",
     },
     401: {
-      description: "That url does not belong to this user",
+      description: "Access Denied",
     },
     404: {
       description: "URL not found",

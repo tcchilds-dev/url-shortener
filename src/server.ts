@@ -5,6 +5,10 @@ import { connectRedis } from "./utils/redisClient.js";
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
+  if (!process.env.JWT_SECRET) {
+    console.error("FATAL ERROR: JWT_SECRET is not defined.");
+    process.exit(1);
+  }
   try {
     await connectRedis();
     app.listen(PORT, () => {

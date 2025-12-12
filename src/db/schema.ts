@@ -33,7 +33,6 @@ export const analytics = pgTable("analytics", {
   urlId: uuid("url_id")
     .references(() => urls.id, { onDelete: "cascade" })
     .notNull(),
-  ip: text("ip"),
   userAgent: text("user_agent"),
   referer: text("referer"),
   country: text("country"),

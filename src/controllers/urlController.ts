@@ -1,6 +1,6 @@
 import { type Request, type Response } from "express";
 import { nanoid } from "nanoid";
-import db from "#utils/client.js";
+import db from "#utils/drizzleClient.js";
 import { createUrlSchema, getUrlSchema } from "#zod-schemas/url.schema.js";
 import { urls, analytics } from "#db/schema.js";
 import { eq } from "drizzle-orm";
@@ -9,27 +9,75 @@ import type { AuthRequest } from "#middleware/authentication.js";
 import { analyticsQueue } from "#utils/queueClient.js";
 import redis from "#utils/redisClient.js";
 
+const PG_UNIQUE_VIOLATION_CODE = "23505";
+const MAX_RETRIES = 5;
+
+interface DbErrorWithCode {
+  code: string;
+  message: string;
+}
+
+function isDbErrorWithCode(error: unknown): error is DbErrorWithCode {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  );
+}
+
 // --- Shorten ---
 export async function shorten(req: AuthRequest, res: Response) {
   const { url } = createUrlSchema.parse(req.body);
   const userId = req.user!.id;
-  const shortId = nanoid(7);
 
-  const data: typeof urls.$inferInsert = {
-    shortCode: shortId,
-    originalUrl: url,
-    userId: userId,
-  };
+  let shortId: string;
+  let attempts = 0;
 
-  await db.insert(urls).values(data);
+  while (attempts < MAX_RETRIES) {
+    shortId = nanoid(7);
 
-  const shortUrl = `${req.protocol}://${req.get("host")}/${shortId}`;
+    const data: typeof urls.$inferInsert = {
+      shortCode: shortId,
+      originalUrl: url,
+      userId: userId,
+    };
 
-  return res.status(201).json({
-    shortUrl,
-    code: shortId,
-    originalUrl: url,
-  });
+    try {
+      await db.insert(urls).values(data);
+
+      const shortUrl = `${req.protocol}://${req.get("host")}/${shortId}`;
+
+      return res.status(201).json({
+        shortUrl,
+        code: shortId,
+        originalUrl: url,
+      });
+    } catch (error) {
+      if (isDbErrorWithCode(error)) {
+        if (error.code === PG_UNIQUE_VIOLATION_CODE) {
+          req.log.warn(
+            { attempt: attempts + 1, shortId },
+            "Collision detected on short code insertion. Retrying."
+          );
+
+          attempts++;
+          continue;
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  req.log.error(
+    `Failed to generate unique short ID after ${MAX_RETRIES} attempts.`
+  );
+
+  throw new AppError(
+    "Service is under high load. Please try again shortly.",
+    503
+  );
 }
 
 // --- Redirect ---
@@ -47,7 +95,7 @@ export async function codeRedirect(req: Request, res: Response) {
 
   if (cachedUrl) {
     console.log("Cache Hit");
-    await redis.expire(shortCode, 604800);
+    await redis.expire(`url:${shortCode}`, 604800);
     analyticsQueue.add("track-click", analyticsData);
     return res.redirect(cachedUrl);
   }
@@ -68,14 +116,19 @@ export async function codeRedirect(req: Request, res: Response) {
   return res.redirect(urlFound.url);
 }
 
-// --- User URL Analytics ---
+// --- User URLs ---
 export async function getUserUrlAnalytics(req: AuthRequest, res: Response) {
   const userId = req.user!.id;
 
   const stats = await db
-    .select()
+    .select({
+      shortCode: urls.shortCode,
+      originalUrl: urls.originalUrl,
+      clickCount: urls.clickCount,
+      lastClickedAt: urls.lastClickedAt,
+      createdAt: urls.createdAt,
+    })
     .from(urls)
-    .innerJoin(analytics, eq(urls.id, analytics.urlId))
     .where(eq(urls.userId, userId));
 
   return res.status(200).json(stats);

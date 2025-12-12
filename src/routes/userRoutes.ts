@@ -4,7 +4,7 @@ import { register, logIn } from "#controllers/userController.js";
 
 const router: Router = Router();
 
-router.post("/register", authLimiter, register);
-router.post("/login", authLimiter, logIn);
+router.post("/api/v1/users/register", authLimiter, register);
+router.post("/api/v1/users/login", authLimiter, logIn);
 
 export default router;

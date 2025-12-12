@@ -1,9 +1,10 @@
 import { Worker } from "bullmq";
-import db from "./client.js";
+import db from "./drizzleClient.js";
 import { urls, analytics } from "#db/schema.js";
 import { eq, sql } from "drizzle-orm";
 import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
+import logger from "./logger.js";
 
 const connection = {
   url: process.env.REDIS_URL || "redis://localhost:6379",
@@ -19,51 +20,54 @@ function lookupLocationFromIp(ip: string | undefined) {
 const worker = new Worker(
   "analytics-queue",
   async (job) => {
-    const { shortCode, ip, userAgent, referer } = job.data;
+    try {
+      const { shortCode, ip, userAgent, referer } = job.data;
 
-    console.log(`Processing click for ${shortCode}...`);
+      logger.info(`Processing click for ${shortCode}...`);
 
-    // find URL ID
-    const [urlFound] = await db
-      .select({ id: urls.id })
-      .from(urls)
-      .where(eq(urls.shortCode, shortCode));
+      // find URL ID
+      const [urlFound] = await db
+        .select({ id: urls.id })
+        .from(urls)
+        .where(eq(urls.shortCode, shortCode));
 
-    if (!urlFound) {
-      console.error(`URL not found for code: ${shortCode}`);
-      return;
-    }
+      if (!urlFound) {
+        logger.error(`URL not found for code: ${shortCode}`);
+        return;
+      }
 
-    // perform CPU heavy tasks
-    const uaResult = UAParser(userAgent);
-    const deviceType = uaResult.device.type ?? "desktop";
+      // perform CPU heavy tasks
+      const uaResult = UAParser(userAgent);
+      const deviceType = uaResult.device.type ?? "desktop";
 
-    const location = lookupLocationFromIp(ip);
-    const country = location?.country ?? null;
-    const city = location?.city ?? null;
+      const location = lookupLocationFromIp(ip);
+      const country = location?.country ?? null;
+      const city = location?.city ?? null;
 
-    // db write transaction
-    await db.transaction(async (tx) => {
-      await tx
-        .update(urls)
-        .set({
-          clickCount: sql<number>`${urls.clickCount} + 1`,
-          lastClickedAt: new Date(),
-        })
-        .where(eq(urls.id, urlFound.id));
+      // db write transaction
+      await db.transaction(async (tx) => {
+        await tx
+          .update(urls)
+          .set({
+            clickCount: sql<number>`${urls.clickCount} + 1`,
+            lastClickedAt: new Date(),
+          })
+          .where(eq(urls.id, urlFound.id));
 
-      await tx.insert(analytics).values({
-        urlId: urlFound.id,
-        ip: ip,
-        userAgent: userAgent,
-        referer: referer,
-        country: country,
-        city: city,
-        device: deviceType,
+        await tx.insert(analytics).values({
+          urlId: urlFound.id,
+          userAgent: userAgent,
+          referer: referer,
+          country: country,
+          city: city,
+          device: deviceType,
+        });
       });
-    });
 
-    console.log(`Stats saved for ${shortCode}`);
+      logger.info(`Stats saved for ${shortCode}`);
+    } catch (error) {
+      logger.error(error);
+    }
   },
   { connection }
 );

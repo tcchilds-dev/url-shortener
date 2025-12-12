@@ -24,7 +24,7 @@ export const errorHandler = (
   if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
-    res.status(statusCode).json(message);
+    res.status(statusCode).json({ message });
   }
 
   // Handle Unknown/Programming Errors

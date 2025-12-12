@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import db from "#utils/client.js";
+import db from "#utils/drizzleClient.js";
 import { users } from "#db/schema.js";
 import { eq } from "drizzle-orm";
 import { AppError } from "#utils/AppError.js";
@@ -48,12 +48,12 @@ export async function logIn(req: Request, res: Response) {
   const [user] = await db.select().from(users).where(eq(users.email, email));
 
   if (!user) {
-    throw new AppError("A user with that email does not exist", 404);
+    throw new AppError("Invalid email or password", 401);
   }
 
   const validPassword = await bcrypt.compare(password, user.password);
   if (!validPassword) {
-    throw new AppError("Invalid password", 400);
+    throw new AppError("Invalid email or password", 401);
   }
 
   const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
