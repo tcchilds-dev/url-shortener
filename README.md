@@ -8,7 +8,7 @@ I'm currently learning, so any feedback is welcome!
 
 - **Authenticated User Accounts**: Users can register, create their own short links, and have exclusive access to the analytics of their short links.
 - **Click Analytics**: Tracks the number of clicks, last clicked at time for links. Each click records referrer, geographical and device information.
-- **Fast Redirects**: Uses [Redis](https://redis.io/) to cache URLs for ultra-fast redirection. [BullMQ](https://bullmq.io/) is used to offload analytics processing to a background worker, ensuring the user's redirect is never blocked by database writes.
+- **Fast Redirects**: Uses [Redis](https://redis.io/) to cache URLs for fast redirection. [BullMQ](https://bullmq.io/) is used to offload analytics processing to a background worker, ensuring the user's redirect is never blocked by database writes.
 - **Rate Limiting**: Implements request limits to prevent abuse.
 
 ## Technologies Used
@@ -93,6 +93,7 @@ docker compose -f docker-compose-dev.yml up -d
 ```
 
 The API should now be running at `http://localhost:[Your API Port]`.
+
 For the interactive API reference go to `http://localhost:[Your API Port]/docs`.
 
 ## API Endpoints
@@ -103,21 +104,20 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 
 | **Method** | **Path**    | **Summary**                   | **Description**                                                          | **Security** |
 | ---------- | ----------- | ----------------------------- | ------------------------------------------------------------------------ | ------------ |
-| `POST`     | `/register` | Register a new user           | Creates a new user account with email and password.                      | None         |
-| `POST`     | `/login`    | Log in to an existing account | Authenticates a user with email and password, returning a **JWT token**. | None         |
+| `POST`     | `/api/v1/users/register` | Register a new user           | Creates a new user account with email and password.                      | None         |
+| `POST`     | `/api/v1/users/login`    | Log in to an existing account | Authenticates a user with email and password, returning a **JWT token**. | None         |
 
 ###### Responses
 
-`POST /register`
+`POST /api/v1/users/register`
 
 - `201` - Successfully registered new user
 - `400` - Account already exists with that email or invalid input
 
-`POST /login`
+`POST /api/v1/users/login`
 
 - `201` - Successfully authenticated user
-- `400` - Bad request - Invalid password
-- `404` - User not found - No account exists with that email
+- `401` - Invalid username or password
 
 **Note**: Authenticated endpoints require a **Bearer Token** (JWT) in the `Authorization` header.
 
@@ -125,12 +125,12 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 
 | **Method** | **Path**       | **Summary**               | **Description**                                                        | **Security** |
 | ---------- | -------------- | ------------------------- | ---------------------------------------------------------------------- | ------------ |
-| `POST`     | `/shorten`     | Shorten a URL             | Receive a long URL and create a shortened URL for an authorized user.  | Bearer Auth  |
+| `POST`     | `/api/v1/urls`     | Shorten a URL             | Receive a long URL and create a shortened URL for an authorized user.  | Bearer Auth  |
 | `GET`      | `/{shortCode}` | Redirect using short code | Look up the entry, record analytics, and redirect to the original URL. | None         |
 
 ###### Responses
 
-`POST /shorten`
+`POST /api/v1/urls`
 
 - `201` - URL created successfully
 - `400` - Validation Error
@@ -145,21 +145,21 @@ If you have the project running locally, you can find the Scalar UI Interactive 
 
 | **Method** | **Path**             | **Summary**                | **Description**                                                                | **Security** |
 | ---------- | -------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------ |
-| `GET`      | `/home`              | Get user URL analytics     | Retrieves analytics data for **all URLs** belonging to the authenticated user. | Bearer Auth  |
-| `GET`      | `/{shortCode}/stats` | Get specific URL analytics | Retrieves analytics data for a **specific URL** by its short code.             | Bearer Auth  |
+| `GET`      | `/api/v1/users/urls`              | Get user URL analytics     | Retrieves simple analytics data for **all URLs** belonging to the authenticated user. | Bearer Auth  |
+| `GET`      | `/api/v1/users/urls/{shortCode}/stats` | Get specific URL analytics | Retrieves analytics data for a **specific URL** by its short code.             | Bearer Auth  |
 
 ###### Responses
 
-`GET /home`
+`GET /api/v1/users/urls`
 
-- `200` - Return stats for all URLs (Array of URL/Analytics objects)
+- `200` - Return simple stats for all URLs
 - `401` - Unauthorized - Invalid or missing authentication token
 
-`GET /{shortCode}/stats`
+`GET /api/v1/users/urls/{shortCode}/stats`
 
 - `200` - Returns stats (Single URL/Analytics object)
 - `400` - Validation Error
-- `401` - That URL does not belong to this user
+- `401` - Access Denied
 - `404` - URL not found
 
 ## Authentication
