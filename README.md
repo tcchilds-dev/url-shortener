@@ -67,7 +67,7 @@ pnpm install
 - **Docker Compose**:
 
 ```Bash
-docker compose -f docker-compose-dev.yml up -d --build
+docker compose up -d --build
 ```
 
 ###### 4. Run Database Migrations
@@ -83,13 +83,13 @@ After the initial set up you should have the API running in docker containers.
 To stop the containers:
 
 ```bash
-docker compose -f docker-compose-dev.yml down
+docker compose down
 ```
 
 To start them again:
 
 ```bash
-docker compose -f docker-compose-dev.yml up -d
+docker compose up -d
 ```
 
 The API should now be running at `http://localhost:[Your API Port]`.
