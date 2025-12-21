@@ -72,6 +72,6 @@ const worker = new Worker(
   { connection }
 );
 
-console.log("Analytics Worker Started 🚀");
+console.log("Analytics Worker Started");
 
 export default worker;
