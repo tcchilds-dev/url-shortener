@@ -34,8 +34,6 @@ const getStore = !isTest
     )
   : undefined;
 
-// limiter options
-
 const authOptions = {
   windowMs: 60 * 60 * 1000,
   max: 20,

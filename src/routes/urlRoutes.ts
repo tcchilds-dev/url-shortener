@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
-  codeRedirect,
-  shorten,
+  redirectToURL,
+  generateShortURL,
   getSpecificUrlAnalytics,
   getUserUrlAnalytics,
 } from "#controllers/urlController.js";
@@ -10,7 +10,7 @@ import { requireAuth } from "#middleware/authentication.js";
 
 const router: Router = Router();
 
-// --- Specific URL Analytics ---
+// Retrieve a specific URL's analytics.
 router.get(
   "/api/v1/users/urls/:shortCode/stats",
   requireAuth,
@@ -18,13 +18,13 @@ router.get(
   getSpecificUrlAnalytics
 );
 
-// --- User's URLs ---
+// Retrieve general data on all of a user's URLs.
 router.get("/api/v1/users/urls", requireAuth, getLimiter, getUserUrlAnalytics);
 
-// --- Shorten URL ---
-router.post("/api/v1/urls", requireAuth, createUrlLimiter, shorten);
+// Generate a short link from a long one.
+router.post("/api/v1/urls", requireAuth, createUrlLimiter, generateShortURL);
 
-// --- Redirect ---
-router.get("/:shortCode", getLimiter, codeRedirect);
+// Redirect a user that clicked on a short link.
+router.get("/:shortCode", getLimiter, redirectToURL);
 
 export default router;

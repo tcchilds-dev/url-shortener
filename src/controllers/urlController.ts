@@ -26,14 +26,15 @@ function isDbErrorWithCode(error: unknown): error is DbErrorWithCode {
   );
 }
 
-// --- Shorten ---
-export async function shorten(req: AuthRequest, res: Response) {
+// Takes a full URL and returns a shortened one.
+export async function generateShortURL(req: AuthRequest, res: Response) {
   const { url } = createUrlSchema.parse(req.body);
   const userId = req.user!.id;
 
   let shortId: string;
   let attempts = 0;
 
+  // Retries in case of collisions.
   while (attempts < MAX_RETRIES) {
     shortId = nanoid(7);
 
@@ -80,8 +81,8 @@ export async function shorten(req: AuthRequest, res: Response) {
   );
 }
 
-// --- Redirect ---
-export async function codeRedirect(req: Request, res: Response) {
+// Redirect a user that clicked on a short link.
+export async function redirectToURL(req: Request, res: Response) {
   const { shortCode } = getUrlSchema.parse(req.params);
 
   const analyticsData = {
@@ -91,8 +92,10 @@ export async function codeRedirect(req: Request, res: Response) {
     referer: req.get("referer") ?? null,
   };
 
+  // Retrieve URL from Redis if it is cached.
   const cachedUrl = await redis.get(`url:${shortCode}`);
 
+  // Give analytics to background workers for fast redirect.
   if (cachedUrl) {
     console.log("Cache Hit");
     await redis.expire(`url:${shortCode}`, 604800);
@@ -100,6 +103,7 @@ export async function codeRedirect(req: Request, res: Response) {
     return res.redirect(cachedUrl);
   }
 
+  // Retrieve URL from Postgres if not in Redis.
   const [urlFound] = await db
     .select({ id: urls.id, url: urls.originalUrl })
     .from(urls)
@@ -109,6 +113,7 @@ export async function codeRedirect(req: Request, res: Response) {
     throw new AppError("URL not found", 404);
   }
 
+  // Cache the URL
   await redis.set(`url:${shortCode}`, urlFound.url, { EX: 604800 });
 
   analyticsQueue.add("track-click", analyticsData);
@@ -116,7 +121,7 @@ export async function codeRedirect(req: Request, res: Response) {
   return res.redirect(urlFound.url);
 }
 
-// --- User URLs ---
+// Retrieve general data for all a user's links.
 export async function getUserUrlAnalytics(req: AuthRequest, res: Response) {
   const userId = req.user!.id;
 
@@ -134,7 +139,7 @@ export async function getUserUrlAnalytics(req: AuthRequest, res: Response) {
   return res.status(200).json(stats);
 }
 
-// --- Specific URL Analyics ---
+// Retrieve analytics for a specified URL.
 export async function getSpecificUrlAnalytics(req: AuthRequest, res: Response) {
   const { shortCode } = getUrlSchema.parse(req.params);
   const userId = req.user!.id;

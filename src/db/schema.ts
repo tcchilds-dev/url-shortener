@@ -2,7 +2,6 @@ import { integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 
-// users table
 export const users = pgTable("users", {
   id: uuid("id")
     .primaryKey()
@@ -12,7 +11,6 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// urls table
 export const urls = pgTable("urls", {
   id: uuid("id")
     .primaryKey()
@@ -25,7 +23,6 @@ export const urls = pgTable("urls", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// analytics table
 export const analytics = pgTable("analytics", {
   id: uuid("id")
     .primaryKey()
@@ -41,7 +38,6 @@ export const analytics = pgTable("analytics", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// relations
 export const userRelations = relations(users, ({ many }) => ({
   urls: many(urls),
 }));

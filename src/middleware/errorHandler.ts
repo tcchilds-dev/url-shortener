@@ -8,11 +8,11 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // Default to 500 Internal Server Error
+  // Default to 500 Internal Server Error.
   let statusCode = 500;
   let message = "Internal Server Error";
 
-  // Handle Zod Validation Errors
+  // Handles zod validation errors.
   if (err instanceof ZodError) {
     return res.status(400).json({
       message: "Validation Error",
@@ -20,17 +20,17 @@ export const errorHandler = (
     });
   }
 
-  // Handle Custom App Errors (Operational)
+  // Handles custom app errors (operational).
   if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
     res.status(statusCode).json({ message });
   }
 
-  // Handle Unknown/Programming Errors
-  console.error("ERROR:", err); // Log the full error for dev
+  // Handle unknown/programming errors.
+  console.error("ERROR:", err);
   return res.status(statusCode).json({
     status: "error",
-    message: "Something went wrong!", // Don't leak stack traces to the client
+    message: "Something went wrong!",
   });
 };

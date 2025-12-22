@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { userDataSchema } from "#zod-schemas/user.schema.js";
 
-// --- Register ---
+// Registers a new user.
 export async function register(req: Request, res: Response) {
   const { email, password } = userDataSchema.parse(req.body);
 
@@ -41,7 +41,7 @@ export async function register(req: Request, res: Response) {
   });
 }
 
-// --- Log In ---
+// Log a user in.
 export async function logIn(req: Request, res: Response) {
   const { email, password } = userDataSchema.parse(req.body);
 

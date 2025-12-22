@@ -25,7 +25,7 @@ const worker = new Worker(
 
       logger.info(`Processing click for ${shortCode}...`);
 
-      // find URL ID
+      // Find URL ID.
       const [urlFound] = await db
         .select({ id: urls.id })
         .from(urls)
@@ -36,7 +36,7 @@ const worker = new Worker(
         return;
       }
 
-      // perform CPU heavy tasks
+      // Perform CPU heavy tasks.
       const uaResult = UAParser(userAgent);
       const deviceType = uaResult.device.type ?? "desktop";
 
@@ -44,7 +44,7 @@ const worker = new Worker(
       const country = location?.country ?? null;
       const city = location?.city ?? null;
 
-      // db write transaction
+      // Database write transaction.
       await db.transaction(async (tx) => {
         await tx
           .update(urls)

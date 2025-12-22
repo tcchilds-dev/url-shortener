@@ -48,26 +48,22 @@ describe("Integration: URL API", () => {
     await redis.quit();
   });
 
-  // --- register ---
+  // Register tests.
   describe("POST /api/v1/users/register", () => {
     it("should register a new user", async () => {
-      // send request
       const response = await request(app)
         .post("/api/v1/users/register")
         .send({ email: "newGuy@example.com", password: "password123" });
 
-      // assert response
       expect(response.status).toBe(201);
       expect(response.body.token).toBeDefined();
 
-      // assert db side-effects
       const result = await db.select().from(users);
       expect(result).length(2);
       expect(result[1]!.email).toBe("newGuy@example.com");
     });
 
     it("should return 400 if an account already exists", async () => {
-      // seed the db
       const hashedPass = await bcrypt.hash("password123", 10);
 
       await db.insert(users).values({
@@ -75,29 +71,24 @@ describe("Integration: URL API", () => {
         password: hashedPass,
       });
 
-      // send request
       const response = await request(app).post("/api/v1/users/register").send({
         email: "existing@example.com",
         password: "password123",
       });
 
-      // assert response
       expect(response.status).toBe(400);
     });
 
     it("should return ZodError if email is invalid", async () => {
-      // send request
       const response = await request(app).post("/api/v1/users/register").send({
         email: "not-a-valid.email",
         password: "password123",
       });
 
-      // assert response
       expect(response.status).toBe(400);
     });
 
     it("should return ZodError if password is less than 8 chars", async () => {
-      // send request
       const response = await request(app).post("/api/v1/users/register").send({
         email: "valid@example.com",
         password: "2short",
@@ -107,10 +98,9 @@ describe("Integration: URL API", () => {
     });
   });
 
-  // --- log in ---
+  // Log in tests.
   describe("POST /api/v1/users/login", () => {
     it("should log an existing user in", async () => {
-      // seed the db
       const hashedPass = await bcrypt.hash("password123", 10);
 
       await db.insert(users).values({
@@ -118,29 +108,24 @@ describe("Integration: URL API", () => {
         password: hashedPass,
       });
 
-      // send request
       const response = await request(app)
         .post("/api/v1/users/login")
         .send({ email: "existing@example.com", password: "password123" });
 
-      // assert response
       expect(response.status).toBe(201);
       expect(response.body.token).toBeDefined();
     });
 
     it("should return 401 if the user does not exist", async () => {
-      // send request
       const response = await request(app).post("/api/v1/users/login").send({
         email: "ghost@example.com",
         password: "password123",
       });
 
-      // assert response
       expect(response.status).toBe(401);
     });
 
     it("should return 401 if the password is invalid", async () => {
-      // seed the db
       const hashedPass = await bcrypt.hash("password123", 10);
 
       const data: typeof users.$inferInsert = {
@@ -150,32 +135,27 @@ describe("Integration: URL API", () => {
 
       await db.insert(users).values(data);
 
-      // send request
       const response = await request(app).post("/api/v1/users/login").send({
         email: "existing@example.com",
         password: "password12",
       });
 
-      // assert responses
       expect(response.status).toBe(401);
     });
   });
 
-  // --- shorten ---
+  // Tests for generating a short URL.
   describe("POST /api/v1/urls", () => {
     it("should take long URL, create short, store them in DB, return short", async () => {
-      // send request
       const response = await request(app)
         .post("/api/v1/urls")
         .set("Authorization", `Bearer ${authToken}`)
         .send({ url: "https://www.github.com" });
 
-      // assert response
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty("shortUrl");
       expect(response.body).toHaveProperty("code");
 
-      // assert db side-effects
       const result = await db.select().from(urls);
       expect(result).toHaveLength(1);
       expect(result[0]!.originalUrl).toBe("https://www.github.com");
@@ -209,10 +189,9 @@ describe("Integration: URL API", () => {
     });
   });
 
-  // --- redirect ---
+  // Redirect tests.
   describe("GET /:shortCode", () => {
     it("should redirect to the original URL", async () => {
-      // seed the db
       const [inserted] = await db
         .insert(urls)
         .values({
@@ -221,16 +200,13 @@ describe("Integration: URL API", () => {
         })
         .returning();
 
-      // send request
       const response = await request(app).get(`/${inserted!.shortCode}`);
 
-      // assert redirect
       expect(response.status).toBe(302);
       expect(response.header.location).toBe("https://www.google.com");
     });
 
     it("should redirect from cache on second request", async () => {
-      // seed the db
       const [inserted] = await db
         .insert(urls)
         .values({
@@ -240,47 +216,37 @@ describe("Integration: URL API", () => {
         .returning();
       const shortCode = inserted!.shortCode;
 
-      // first request - db hit
       await request(app).get(`/${shortCode}`);
 
-      // simulate cache expiration
       await redis.del(`urls:${shortCode}`);
 
-      // second request - db miss - should insert into redis
       await request(app).get(`/${shortCode}`);
 
-      // third request - cache hit
       const response = await request(app).get(`/${shortCode}`);
 
-      // assert redirect
       expect(response.status).toBe(302);
       expect(response.header.location).toBe("https://www.google.com");
     });
 
     it("should return 400 for an invalid code (Zod)", async () => {
-      // make bad request
       const response = await request(app).get("/wrongformat");
 
-      // assert response
       expect(response.status).toBe(400);
       expect(response.body.message).toBe("Validation Error");
     });
 
     it("should return 404 for non-existent code", async () => {
-      // make bad request
       const response = await request(app).get("/0123456");
 
-      // assert response
       expect(response.status).toBe(404);
     });
   });
 
-  // --- get specific url stats ---
+  // Tests for getting specific URL analytics.
   describe("GET /api/v1/users/urls/:shortCode/stats", () => {
     it("should return stats for specified short url", async () => {
       const UNIQUE_URL_ID = uuidv7();
 
-      // seed the db
       await db.insert(urls).values({
         id: UNIQUE_URL_ID,
         shortCode: TEST_SHORT_CODE,
@@ -301,21 +267,19 @@ describe("Integration: URL API", () => {
         createdAt: new Date("2025-11-30T00:00:00Z"),
       });
 
-      // send request
       const response = await request(app)
         .get(`/api/v1/users/urls/${TEST_SHORT_CODE}/stats`)
         .set("Authorization", `Bearer ${authToken}`);
 
-      // assert response
       expect(response.status).toBe(200);
     });
   });
 
+  // Tests for retrieving information on all a user's URLs.
   describe("GET /api/v1/users/urls", () => {
     it("should return all urls and analytics owned by the user", async () => {
       const UNIQUE_URL_ID = uuidv7();
 
-      // seed the db
       await db.insert(urls).values({
         id: UNIQUE_URL_ID,
         shortCode: TEST_SHORT_CODE,
@@ -336,7 +300,6 @@ describe("Integration: URL API", () => {
         createdAt: new Date("2025-11-30T00:00:00Z"),
       });
 
-      // send request
       const response = await request(app)
         .get("/api/v1/users/urls")
         .set("Authorization", `Bearer ${authToken}`);

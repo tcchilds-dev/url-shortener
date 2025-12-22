@@ -13,10 +13,10 @@ import type { AuthRequest } from "#middleware/authentication.js";
 
 const app: Application = express();
 
-// Check Environment
+// Check environment.
 const isDevelopment = process.env.NODE_ENV === "development";
 
-// --- Coditional CSP Exception Middleware for Docs ---
+// CSP exception middleware for docs.
 const scalarCspDevException = (
   req: Request,
   res: Response,
@@ -39,11 +39,10 @@ const scalarCspDevException = (
   }
 };
 
-// Tell Express I'm behind a proxy (Docker)
+// Tell Express I'm behind a proxy (Docker).
 app.set("trust proxy", 1);
 
-// Security
-// TODO: find a way to stop using "unsafe inline"
+// Security.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -58,10 +57,10 @@ app.use(
   })
 );
 
-// Body Parser
+// JSON body parser.
 app.use(express.json());
 
-// Logger
+// Logger.
 app.use(
   pinoHttp({
     logger,
@@ -75,16 +74,15 @@ app.use(
   })
 );
 
-// Docs
+// Generate docs.
 const openApiDocs = generateOpenApiDocs();
 
-// raw JSON
+// Docs: raw JSON.
 app.get("/openapi.json", (req: Request, res: Response) => {
   res.json(openApiDocs);
 });
 
-// Scalar UI
-
+// Scalar UI.
 app.use("/docs", scalarCspDevException);
 
 app.use(
@@ -95,14 +93,14 @@ app.use(
   })
 );
 
-// Routes
+// Routes.
 app.use("/", urlRoutes);
 app.use("/", userRoutes);
 
-// Error Handling
+// Error handling middleware.
 app.use(errorHandler);
 
-// Health Check
+// Health check.
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok", message: "URL-shortener API is running" });
 });

@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
   };
 }
 
+// Check for a valid JWT token.
 export function requireAuth(
   req: AuthRequest,
   res: Response,
