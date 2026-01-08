@@ -7,6 +7,7 @@ import { uuidv7 } from "uuidv7";
 import bcrypt from "bcrypt";
 import { connectRedis } from "#utils/redisClient.js";
 import redis from "#utils/redisClient.js";
+import { eq } from "drizzle-orm";
 
 describe("Integration: URL API", () => {
   const TEST_USER_EMAIL = "integration_test@example.com";
@@ -216,16 +217,51 @@ describe("Integration: URL API", () => {
         .returning();
       const shortCode = inserted!.shortCode;
 
+      // First request should hit the DB and prime the Redis cache.
+      const firstResponse = await request(app).get(`/${shortCode}`);
+      expect(firstResponse.status).toBe(302);
+      expect(firstResponse.header.location).toBe("https://www.google.com");
+
+      // DB update should not affect the cache.
+      await db
+        .update(urls)
+        .set({ originalUrl: "https://www.yahoo.com" })
+        .where(eq(urls.shortCode, shortCode));
+
+      const secondResponse = await request(app).get(`/${shortCode}`);
+      expect(secondResponse.status).toBe(302);
+      expect(secondResponse.header.location).toBe("https://www.google.com");
+      expect(secondResponse.header.location).not.toBe("https://www.yahoo.com");
+
+      await redis.del(`url:${shortCode}`);
+    });
+
+    it("should fetch new data after cache expires", async () => {
+      // Set up and prime cache.
+      const [inserted] = await db
+        .insert(urls)
+        .values({
+          shortCode: "1234567",
+          originalUrl: "https://www.google.com",
+        })
+        .returning();
+      const shortCode = inserted!.shortCode;
       await request(app).get(`/${shortCode}`);
 
-      await redis.del(`urls:${shortCode}`);
+      // Update DB.
+      await db
+        .update(urls)
+        .set({ originalUrl: "https://www.yahoo.com" })
+        .where(eq(urls.shortCode, shortCode));
 
-      await request(app).get(`/${shortCode}`);
+      // Delete the Redis key.
+      await redis.del(`url:${shortCode}`);
 
+      // Request again to fetch new data.
       const response = await request(app).get(`/${shortCode}`);
+      expect(response.header.location).toBe("https://www.yahoo.com");
 
-      expect(response.status).toBe(302);
-      expect(response.header.location).toBe("https://www.google.com");
+      await redis.del(`url:${shortCode}`);
     });
 
     it("should return 400 for an invalid code (Zod)", async () => {
